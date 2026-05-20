@@ -6,6 +6,9 @@ Built by **Rishi Raj**
 
 ---
 ## ScreenShot
+<img width="1522" height="486" alt="image" src="https://github.com/user-attachments/assets/831ce2c7-de98-4013-b513-2ed342af6617" />
+
+
 <img width="1522" height="486" alt="image" src="https://github.com/user-attachments/assets/817284f6-35fb-46a7-bd3f-7aa53ad98bd9" />
 
 ---
