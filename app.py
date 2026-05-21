@@ -20,6 +20,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+<<<<<<< HEAD
 # ══════════════════════════════════════════════════════════════════════
 #  GLOBAL CSS
 # ══════════════════════════════════════════════════════════════════════
@@ -251,6 +252,11 @@ hr { border:none !important; border-top:1px solid var(--border) !important; marg
 </style>
 """, unsafe_allow_html=True)
 
+=======
+# ══════════════════════════════════════════════════════════════════
+#  GLOBAL STYLES  — injected once, applies to everything
+# ══════════════════════════════════════════════════════════════════
+>>>>>>> 9625fbda9aae40516b9e9dd707ab58510ff9e9fc
 
 # ══════════════════════════════════════════════════════════════════════
 #  LAZY IMPORTS
