@@ -1,7 +1,9 @@
 """
 Meeting Summarizer & Action Item Extractor
-Author: Rishi Raj
-UI: Cinematic editorial — Cormorant Garamond, warm cream, deep 3D
+Author : Rishi Raj
+UI     : Dark SaaS — inspired by intenta.ai
+         #0A0A0A bg · Inter · green/purple pills · glowing cards
+Fix    : @import for fonts (never <link> in Streamlit)
 """
 
 import os, json, tempfile, traceback
@@ -13,158 +15,249 @@ load_dotenv()
 
 st.set_page_config(
     page_title="Meeting Summarizer",
-    page_icon="🎬",
+    page_icon="🎙️",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# ══════════════════════════════════════════════════════════════════
-#  GLOBAL STYLES  — injected once, applies to everything
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════
+#  GLOBAL CSS
+# ══════════════════════════════════════════════════════════════════════
 st.markdown("""
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,600&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
 <style>
-:root{
-  --cream:#F5F2EA; --paper:#FDFCF8; --white:#FFFFFF;
-  --ink:#18140F; --ink2:#5C5248; --ink3:#9C8E84;
-  --gold:#A67C3A; --gold2:#C9A55A; --gold3:#EDD9A3;
-  --border:rgba(24,20,15,.08); --border2:rgba(24,20,15,.14);
-  --s1:0 2px 6px rgba(24,20,15,.05),0 1px 2px rgba(24,20,15,.04);
-  --s2:0 8px 24px rgba(24,20,15,.09),0 3px 8px rgba(24,20,15,.05),0 1px 2px rgba(24,20,15,.04);
-  --s3:0 1px 0 rgba(255,255,255,.85) inset,0 20px 50px rgba(24,20,15,.11),0 6px 16px rgba(24,20,15,.07),0 2px 4px rgba(24,20,15,.05);
-  --lift:0 1px 0 rgba(255,255,255,.85) inset,0 28px 60px rgba(24,20,15,.15),0 10px 22px rgba(24,20,15,.09),0 3px 6px rgba(24,20,15,.06);
-}
-*{box-sizing:border-box}
-html,body,[class*="css"]{font-family:'DM Sans',sans-serif!important;background:var(--cream)!important;color:var(--ink)!important}
-#MainMenu,footer,header{visibility:hidden!important}
-.block-container{padding:2rem 3.5rem 5rem!important;max-width:1100px!important}
-.stApp{background:var(--cream)!important}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
-/* ─ Sidebar ─ */
-section[data-testid="stSidebar"]>div{
-  background:var(--paper)!important;
-  border-right:1px solid var(--border2)!important;
-  box-shadow:4px 0 20px rgba(24,20,15,.06)!important;
-}
-
-/* ─ Selectbox ─ */
-.stSelectbox>div>div{
-  background:var(--white)!important;border:1px solid var(--border2)!important;
-  border-radius:8px!important;box-shadow:var(--s1)!important;
-  font-family:'DM Sans',sans-serif!important;font-size:.875rem!important;
-  transition:border-color .18s,box-shadow .18s!important;
-}
-.stSelectbox>div>div:focus-within{border-color:var(--gold2)!important;box-shadow:0 0 0 3px rgba(169,124,58,.15)!important}
-
-/* ─ File uploader ─ */
-[data-testid="stFileUploader"]{
-  background:var(--white)!important;border:1.5px dashed var(--border2)!important;
-  border-radius:16px!important;padding:2rem!important;
-  box-shadow:var(--s3)!important;transition:all .25s ease!important;
-}
-[data-testid="stFileUploader"]:hover{
-  border-color:var(--gold2)!important;box-shadow:var(--lift)!important;
-  transform:translateY(-2px)!important;
+:root {
+  --bg        : #0A0A0A;
+  --surface   : #111111;
+  --surface2  : #1A1A1A;
+  --surface3  : #222222;
+  --border    : rgba(255,255,255,0.07);
+  --border2   : rgba(255,255,255,0.12);
+  --text      : #F0F0F0;
+  --text2     : #999999;
+  --text3     : #555555;
+  --green     : #22C55E;
+  --green-bg  : rgba(34,197,94,0.10);
+  --green-border: rgba(34,197,94,0.25);
+  --purple    : #A855F7;
+  --purple-bg : rgba(168,85,247,0.10);
+  --purple-border: rgba(168,85,247,0.25);
+  --blue      : #3B82F6;
+  --blue-bg   : rgba(59,130,246,0.10);
+  --glow-g    : 0 0 20px rgba(34,197,94,0.15);
+  --glow-p    : 0 0 20px rgba(168,85,247,0.15);
+  --card-shadow: 0 1px 0 rgba(255,255,255,0.04) inset,
+                 0 20px 60px rgba(0,0,0,0.5),
+                 0 6px 20px rgba(0,0,0,0.3);
+  --card-hover : 0 1px 0 rgba(255,255,255,0.06) inset,
+                 0 32px 80px rgba(0,0,0,0.6),
+                 0 10px 30px rgba(0,0,0,0.4),
+                 0 0 0 1px rgba(255,255,255,0.1);
 }
 
-/* ─ Primary button ─ */
-.stButton>button[kind="primary"]{
-  background:linear-gradient(155deg,#2E2218 0%,#18140F 100%)!important;
-  color:#EDD9A3!important;font-family:'DM Sans',sans-serif!important;
-  font-weight:500!important;letter-spacing:.12em!important;font-size:.78rem!important;
-  text-transform:uppercase!important;border:none!important;border-radius:10px!important;
-  padding:.9rem 2.5rem!important;
-  box-shadow:0 1px 0 rgba(255,255,255,.08) inset,0 14px 36px rgba(24,20,15,.32),0 4px 12px rgba(24,20,15,.18)!important;
-  transition:all .22s cubic-bezier(.34,1.56,.64,1)!important;
-}
-.stButton>button[kind="primary"]:hover{
-  transform:translateY(-3px) scale(1.01)!important;
-  box-shadow:0 1px 0 rgba(255,255,255,.1) inset,0 22px 52px rgba(24,20,15,.38),0 8px 18px rgba(24,20,15,.22)!important;
-}
-.stButton>button[kind="primary"]:active{transform:translateY(1px) scale(.99)!important}
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
 
-/* ─ Download button ─ */
-.stDownloadButton>button{
-  background:var(--white)!important;color:var(--ink)!important;
-  font-family:'DM Sans',sans-serif!important;font-weight:500!important;
-  letter-spacing:.1em!important;font-size:.78rem!important;text-transform:uppercase!important;
-  border:1px solid var(--border2)!important;border-radius:10px!important;
-  padding:.85rem 2rem!important;box-shadow:var(--s3)!important;
-  transition:all .22s cubic-bezier(.34,1.56,.64,1)!important;
-}
-.stDownloadButton>button:hover{
-  border-color:var(--gold2)!important;color:var(--gold)!important;
-  transform:translateY(-2px)!important;
-  box-shadow:0 1px 0 rgba(255,255,255,.85) inset,0 18px 40px rgba(24,20,15,.13),0 0 0 3px rgba(169,124,58,.12)!important;
+html,body,[class*="css"] {
+  font-family   : 'Inter', -apple-system, sans-serif !important;
+  background    : var(--bg) !important;
+  color         : var(--text) !important;
+  font-size     : 15px !important;
+  -webkit-font-smoothing: antialiased !important;
 }
 
-/* ─ Expander ─ */
-.streamlit-expanderHeader{
-  background:var(--white)!important;border:1px solid var(--border)!important;
-  border-radius:10px!important;font-family:'DM Sans',sans-serif!important;
-  font-size:.875rem!important;font-weight:500!important;
-  box-shadow:var(--s1)!important;transition:all .18s ease!important;
-}
-.streamlit-expanderHeader:hover{border-color:var(--gold2)!important;box-shadow:var(--s2)!important}
-.streamlit-expanderContent{
-  background:var(--paper)!important;border:1px solid var(--border)!important;
-  border-top:none!important;border-radius:0 0 10px 10px!important;
+#MainMenu,footer,header { visibility:hidden !important; }
+.stApp { background: var(--bg) !important; }
+.block-container {
+  padding  : 2.5rem 3.5rem 6rem !important;
+  max-width: 1080px !important;
 }
 
-/* ─ Text area ─ */
-.stTextArea textarea{
-  background:var(--paper)!important;border:1px solid var(--border2)!important;
-  border-radius:8px!important;font-family:'DM Mono',monospace!important;
-  font-size:.8rem!important;color:var(--ink)!important;line-height:1.7!important;
+/* ─── Sidebar ─── */
+section[data-testid="stSidebar"] > div {
+  background  : var(--surface) !important;
+  border-right: 1px solid var(--border2) !important;
+}
+section[data-testid="stSidebar"] * { color: var(--text) !important; }
+
+/* ─── Selectbox ─── */
+.stSelectbox > div > div {
+  background    : var(--surface2) !important;
+  border        : 1px solid var(--border2) !important;
+  border-radius : 10px !important;
+  color         : var(--text) !important;
+  font-family   : 'Inter', sans-serif !important;
+  font-size     : .9rem !important;
+  transition    : border-color .18s, box-shadow .18s !important;
+}
+.stSelectbox > div > div:focus-within {
+  border-color: var(--green) !important;
+  box-shadow  : 0 0 0 3px rgba(34,197,94,.15) !important;
+}
+.stSelectbox > div > div > div { color: var(--text) !important; }
+
+/* ─── File uploader ─── */
+[data-testid="stFileUploader"] {
+  background    : var(--surface) !important;
+  border        : 1.5px dashed var(--border2) !important;
+  border-radius : 16px !important;
+  padding       : 2.5rem !important;
+  transition    : all .25s ease !important;
+  box-shadow    : var(--card-shadow) !important;
+}
+[data-testid="stFileUploader"]:hover {
+  border-color: var(--green) !important;
+  box-shadow  : var(--card-shadow), var(--glow-g) !important;
+  transform   : translateY(-2px) !important;
+}
+[data-testid="stFileUploader"] *,
+[data-testid="stFileUploaderDropzone"] * {
+  color      : var(--text2) !important;
+  font-family: 'Inter',sans-serif !important;
 }
 
-/* ─ Metrics ─ */
-[data-testid="metric-container"]{
-  background:var(--white)!important;border:1px solid var(--border)!important;
-  border-radius:12px!important;padding:1.5rem 1.8rem!important;
-  box-shadow:var(--s3)!important;transition:transform .2s ease,box-shadow .2s ease!important;
+/* ─── Primary button ─── */
+.stButton > button[kind="primary"] {
+  background    : var(--green) !important;
+  color         : #000 !important;
+  font-family   : 'Inter',sans-serif !important;
+  font-weight   : 700 !important;
+  letter-spacing: .04em !important;
+  font-size     : .85rem !important;
+  border        : none !important;
+  border-radius : 10px !important;
+  padding       : .85rem 2.5rem !important;
+  box-shadow    : 0 4px 20px rgba(34,197,94,.35) !important;
+  transition    : all .2s cubic-bezier(.34,1.56,.64,1) !important;
 }
-[data-testid="metric-container"]:hover{transform:translateY(-3px)!important;box-shadow:var(--lift)!important}
-[data-testid="metric-container"] label{
-  font-family:'DM Sans',sans-serif!important;font-size:.68rem!important;
-  letter-spacing:.16em!important;text-transform:uppercase!important;color:var(--ink3)!important;
+.stButton > button[kind="primary"]:hover {
+  transform  : translateY(-3px) scale(1.02) !important;
+  box-shadow : 0 8px 32px rgba(34,197,94,.5) !important;
+  background : #16a34a !important;
 }
-[data-testid="metric-container"] [data-testid="stMetricValue"]{
-  font-family:'Cormorant Garamond',serif!important;font-size:2.6rem!important;
-  font-weight:500!important;color:var(--ink)!important;line-height:1!important;
-}
-
-/* ─ Status ─ */
-[data-testid="stStatusWidget"]{
-  background:var(--white)!important;border:1px solid var(--border)!important;
-  border-radius:10px!important;box-shadow:var(--s2)!important;
-}
-
-/* ─ Alerts ─ */
-[data-testid="stAlert"]{
-  border-radius:10px!important;border:1px solid var(--border)!important;
-  font-family:'DM Sans',sans-serif!important;font-size:.875rem!important;
+.stButton > button[kind="primary"]:active {
+  transform: translateY(0) scale(.98) !important;
 }
 
-/* ─ Scrollbar ─ */
-::-webkit-scrollbar{width:5px;height:5px}
-::-webkit-scrollbar-track{background:var(--cream)}
-::-webkit-scrollbar-thumb{background:var(--gold3);border-radius:3px}
-::-webkit-scrollbar-thumb:hover{background:var(--gold2)}
+/* ─── Download button ─── */
+.stDownloadButton > button {
+  background    : transparent !important;
+  color         : var(--text) !important;
+  font-family   : 'Inter',sans-serif !important;
+  font-weight   : 600 !important;
+  letter-spacing: .04em !important;
+  font-size     : .85rem !important;
+  border        : 1px solid var(--border2) !important;
+  border-radius : 10px !important;
+  padding       : .85rem 2rem !important;
+  transition    : all .2s ease !important;
+}
+.stDownloadButton > button:hover {
+  border-color: var(--green) !important;
+  color       : var(--green) !important;
+  box-shadow  : var(--glow-g) !important;
+  transform   : translateY(-2px) !important;
+}
 
-hr{border:none!important;border-top:1px solid var(--border)!important;margin:2.5rem 0!important}
+/* ─── Expander ─── */
+.streamlit-expanderHeader {
+  background    : var(--surface) !important;
+  border        : 1px solid var(--border) !important;
+  border-radius : 10px !important;
+  font-family   : 'Inter',sans-serif !important;
+  font-size     : .9rem !important;
+  font-weight   : 500 !important;
+  color         : var(--text) !important;
+  padding       : .85rem 1.2rem !important;
+  transition    : border-color .18s, box-shadow .18s !important;
+}
+.streamlit-expanderHeader:hover {
+  border-color: var(--border2) !important;
+  box-shadow  : var(--card-shadow) !important;
+}
+.streamlit-expanderContent {
+  background   : var(--surface2) !important;
+  border       : 1px solid var(--border) !important;
+  border-top   : none !important;
+  border-radius: 0 0 10px 10px !important;
+}
+
+/* ─── Text area ─── */
+.stTextArea textarea {
+  background  : var(--surface2) !important;
+  border      : 1px solid var(--border) !important;
+  border-radius:8px !important;
+  color       : var(--text2) !important;
+  font-family : 'Inter',sans-serif !important;
+  font-size   : .85rem !important;
+  line-height : 1.75 !important;
+}
+
+/* ─── Metric cards ─── */
+[data-testid="metric-container"] {
+  background   : var(--surface) !important;
+  border       : 1px solid var(--border2) !important;
+  border-radius: 14px !important;
+  padding      : 1.6rem 1.8rem !important;
+  box-shadow   : var(--card-shadow) !important;
+  transition   : transform .2s ease, box-shadow .2s ease, border-color .2s !important;
+}
+[data-testid="metric-container"]:hover {
+  transform   : translateY(-4px) !important;
+  border-color: var(--green) !important;
+  box-shadow  : var(--card-shadow), var(--glow-g) !important;
+}
+[data-testid="metric-container"] label {
+  font-family   : 'Inter',sans-serif !important;
+  font-size     : .7rem !important;
+  letter-spacing: .12em !important;
+  text-transform: uppercase !important;
+  color         : var(--text3) !important;
+  font-weight   : 600 !important;
+}
+[data-testid="metric-container"] [data-testid="stMetricValue"] {
+  font-family: 'Inter',sans-serif !important;
+  font-size  : 2.4rem !important;
+  font-weight: 800 !important;
+  color      : var(--text) !important;
+  line-height: 1.1 !important;
+}
+
+/* ─── Status ─── */
+[data-testid="stStatusWidget"] {
+  background   : var(--surface) !important;
+  border       : 1px solid var(--border2) !important;
+  border-radius: 12px !important;
+  color        : var(--text) !important;
+}
+[data-testid="stStatusWidget"] * { color: var(--text) !important; font-family:'Inter',sans-serif !important; }
+
+/* ─── Alerts ─── */
+[data-testid="stAlert"] {
+  background   : var(--surface2) !important;
+  border       : 1px solid var(--border2) !important;
+  border-radius: 10px !important;
+  color        : var(--text) !important;
+  font-family  : 'Inter',sans-serif !important;
+}
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar       { width:4px; height:4px; }
+::-webkit-scrollbar-track { background:var(--bg); }
+::-webkit-scrollbar-thumb { background:var(--surface3); border-radius:2px; }
+::-webkit-scrollbar-thumb:hover { background:var(--green); }
+
+hr { border:none !important; border-top:1px solid var(--border) !important; margin:2.5rem 0 !important; }
 </style>
 """, unsafe_allow_html=True)
 
 
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════
 #  LAZY IMPORTS
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════
 @st.cache_resource
 def load_whisper_model(size="base"):
-    import whisper
-    return whisper.load_model(size)
+    import whisper; return whisper.load_model(size)
 
 def import_pdfplumber():
     import pdfplumber; return pdfplumber
@@ -178,14 +271,13 @@ def import_pillow_tesseract():
 def get_anthropic_client():
     import anthropic
     key = os.environ.get("ANTHROPIC_API_KEY","")
-    if not key:
-        st.error("ANTHROPIC_API_KEY not set."); st.stop()
+    if not key: st.error("ANTHROPIC_API_KEY not set."); st.stop()
     return anthropic.Anthropic(api_key=key)
 
 
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════
 #  EXTRACTION
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════
 def extract_audio(b, name):
     suf = Path(name).suffix.lower()
     try:
@@ -194,30 +286,27 @@ def extract_audio(b, name):
             t.write(b); p = t.name
         r = m.transcribe(p); os.unlink(p)
         return r["text"].strip(), None
-    except Exception as e:
-        return "", f"Whisper error: {e}"
+    except Exception as e: return "", f"Whisper error: {e}"
 
 def extract_pdf(b, name):
     try:
-        import io; pp = import_pdfplumber()
-        parts=[]
+        import io; pp = import_pdfplumber(); parts=[]
         with pp.open(io.BytesIO(b)) as pdf:
             for i,pg in enumerate(pdf.pages,1):
                 t=pg.extract_text()
                 if t: parts.append(f"[Page {i}]\n{t}")
-        return ("\n\n".join(parts), None) if parts else ("","No extractable text in PDF.")
+        return ("\n\n".join(parts),None) if parts else ("","No extractable text in PDF.")
     except Exception as e: return "", f"PDF error: {e}"
 
 def extract_docx(b, name):
     try:
-        import io; Doc = import_docx()
-        d = Doc(io.BytesIO(b))
-        ps = [p.text.strip() for p in d.paragraphs if p.text.strip()]
+        import io; Doc=import_docx(); d=Doc(io.BytesIO(b))
+        ps=[p.text.strip() for p in d.paragraphs if p.text.strip()]
         for tbl in d.tables:
             for row in tbl.rows:
-                rt = " | ".join(c.text.strip() for c in row.cells if c.text.strip())
+                rt=" | ".join(c.text.strip() for c in row.cells if c.text.strip())
                 if rt: ps.append(rt)
-        return ("\n".join(ps), None) if ps else ("","DOCX has no readable text.")
+        return ("\n".join(ps),None) if ps else ("","DOCX has no readable text.")
     except Exception as e: return "", f"DOCX error: {e}"
 
 def extract_txt(b, name):
@@ -226,56 +315,48 @@ def extract_txt(b, name):
 
 def extract_image(b, name):
     try:
-        import io; Img, tess = import_pillow_tesseract()
-        t = tess.image_to_string(Img.open(io.BytesIO(b)).convert("L"))
-        return (t.strip(), None) if t.strip() else ("","No text detected in image.")
+        import io; Img,tess=import_pillow_tesseract()
+        t=tess.image_to_string(Img.open(io.BytesIO(b)).convert("L"))
+        return (t.strip(),None) if t.strip() else ("","No text detected.")
     except ImportError:
-        return "", ("Tesseract not installed.\n• macOS: `brew install tesseract`\n"
-                    "• Ubuntu: `sudo apt-get install tesseract-ocr`\n"
-                    "• Windows: https://github.com/UB-Mannheim/tesseract/wiki")
+        return "", "Tesseract not installed. brew install tesseract / apt-get install tesseract-ocr"
     except Exception as e: return "", f"OCR error: {e}"
 
-EXT_MAP = {
+EXT_MAP={
     ".mp3":extract_audio,".wav":extract_audio,".m4a":extract_audio,
     ".flac":extract_audio,".ogg":extract_audio,
     ".pdf":extract_pdf,".docx":extract_docx,".txt":extract_txt,
     ".png":extract_image,".jpg":extract_image,".jpeg":extract_image,
 }
-AUDIO_EXTS = {".mp3",".wav",".m4a",".flac",".ogg"}
+AUDIO_EXTS={".mp3",".wav",".m4a",".flac",".ogg"}
 
 def process_file(uf):
-    name = uf.name; ext = Path(name).suffix.lower()
-    b = uf.read(); fn = EXT_MAP.get(ext)
-    if not fn:
-        return {"name":name,"ext":ext,"text":"","error":f"Unsupported: {ext}","ok":False}
-    text, err = fn(b, name)
+    name=uf.name; ext=Path(name).suffix.lower(); b=uf.read()
+    fn=EXT_MAP.get(ext)
+    if not fn: return {"name":name,"ext":ext,"text":"","error":f"Unsupported: {ext}","ok":False}
+    text,err=fn(b,name)
     return {"name":name,"ext":ext,"text":text,"error":err,"ok":bool(text and not err)}
 
 
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════
 #  CLAUDE
-# ══════════════════════════════════════════════════════════════════
-SYS = """You are an expert meeting analyst. Return ONLY a raw JSON object (no markdown, no preamble):
-{"summary":"<max 200 words, key decisions highlighted>","action_items":[{"task":"...","responsible":"...","due":"..."}]}"""
+# ══════════════════════════════════════════════════════════════════════
+SYS="""You are an expert meeting analyst. Return ONLY a raw JSON object — no markdown, no preamble:
+{"summary":"<synthesis ≤200 words, highlight key decisions>","action_items":[{"task":"...","responsible":"...","due":"..."}]}"""
 
 def call_claude(text, model):
     try:
-        client = get_anthropic_client()
-        msg = client.messages.create(
-            model=model, max_tokens=1500, system=SYS,
-            messages=[{"role":"user","content":"Meeting artifacts:\n\n"+text+"\n\nOutput JSON now."}],
-        )
-        raw = msg.content[0].text.strip()
-        if raw.startswith("```"): raw = raw.split("```")[1].lstrip("json").strip()
+        c=get_anthropic_client()
+        msg=c.messages.create(model=model,max_tokens=1500,system=SYS,
+            messages=[{"role":"user","content":"Meeting artifacts:\n\n"+text+"\n\nOutput JSON now."}])
+        raw=msg.content[0].text.strip()
+        if raw.startswith("```"): raw=raw.split("```")[1].lstrip("json").strip()
         return json.loads(raw), None
-    except json.JSONDecodeError:
-        return None, f"Non-JSON response:\n```\n{raw}\n```"
-    except Exception as e:
-        return None, f"Claude API error: {e}"
+    except json.JSONDecodeError: return None, f"Non-JSON response:\n```\n{raw}\n```"
+    except Exception as e: return None, f"Claude API error: {e}"
 
 def build_markdown(results, out):
-    lines=["# Meeting Summary & Action Items\n\n## Summary\n",out.get("summary",""),
-           "\n\n## Action Items\n"]
+    lines=["# Meeting Summary\n\n## Summary\n",out.get("summary",""),"\n\n## Action Items\n"]
     items=out.get("action_items",[])
     if items:
         lines+=["| # | Task | Responsible | Due |","|---|------|-------------|-----|"]
@@ -287,235 +368,272 @@ def build_markdown(results, out):
     return "\n".join(lines)
 
 
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════
 #  SESSION STATE
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════
 def init_state():
     for k,v in [("results",[]),("claude_output",None),("whisper_model","base")]:
         if k not in st.session_state: st.session_state[k]=v
 
 
-# ══════════════════════════════════════════════════════════════════
-#  UI HELPERS — all inline styles, no class-only styling
-# ══════════════════════════════════════════════════════════════════
-def label(text):
-    st.markdown(
-        f'<p style="font-family:\'DM Sans\',sans-serif;font-size:.68rem;'
-        f'letter-spacing:.18em;text-transform:uppercase;color:#9C8E84;'
-        f'font-weight:500;margin:0 0 .5rem;">{text}</p>',
-        unsafe_allow_html=True
-    )
+# ══════════════════════════════════════════════════════════════════════
+#  UI HELPERS
+# ══════════════════════════════════════════════════════════════════════
+def tag(text, color="green"):
+    colors = {
+        "green" : ("rgba(34,197,94,.12)",  "rgba(34,197,94,.3)",  "#22C55E"),
+        "purple": ("rgba(168,85,247,.12)", "rgba(168,85,247,.3)", "#A855F7"),
+        "blue"  : ("rgba(59,130,246,.12)", "rgba(59,130,246,.3)", "#3B82F6"),
+        "gray"  : ("rgba(255,255,255,.06)","rgba(255,255,255,.12)","#888888"),
+    }
+    bg, border, fg = colors.get(color, colors["gray"])
+    return (f'<span style="font-family:Inter,sans-serif;font-size:.72rem;font-weight:600;'
+            f'letter-spacing:.06em;text-transform:uppercase;'
+            f'background:{bg};color:{fg};border:1px solid {border};'
+            f'padding:.25rem .75rem;border-radius:20px;white-space:nowrap;">{text}</span>')
 
-def section_title(eyebrow, heading):
+def section_heading(label, title):
     st.markdown(f"""
-<div style="margin:2.5rem 0 1.2rem;">
-  <p style="font-family:'DM Sans',sans-serif;font-size:.65rem;letter-spacing:.22em;
-     text-transform:uppercase;color:#A67C3A;font-weight:500;margin:0 0 .3rem;">{eyebrow}</p>
-  <p style="font-family:'Cormorant Garamond',serif;font-size:1.75rem;font-weight:400;
-     color:#18140F;margin:0;line-height:1.15;">{heading}</p>
-  <div style="height:2px;width:36px;background:linear-gradient(90deg,#A67C3A,transparent);margin-top:.6rem;border-radius:2px;"></div>
+<div style="margin:3.5rem 0 1.5rem;">
+  <span style="font-family:Inter,sans-serif;font-size:.68rem;font-weight:700;
+    letter-spacing:.2em;text-transform:uppercase;color:#22C55E;">{label}</span>
+  <p style="font-family:Inter,sans-serif;font-size:1.9rem;font-weight:800;
+    color:#F0F0F0;margin:.4rem 0 0;line-height:1.15;letter-spacing:-.03em;">{title}</p>
 </div>""", unsafe_allow_html=True)
 
-def thin_rule():
-    st.markdown("""
-<div style="display:flex;align-items:center;gap:16px;margin:2.5rem 0;">
-  <div style="flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(24,20,15,.1));"></div>
-  <span style="color:#C9A55A;font-size:.9rem;letter-spacing:.3em;">✦</span>
-  <div style="flex:1;height:1px;background:linear-gradient(90deg,rgba(24,20,15,.1),transparent);"></div>
-</div>""", unsafe_allow_html=True)
+def sidebar_label(text):
+    st.markdown(
+        f'<p style="font-family:Inter,sans-serif;font-size:.68rem;font-weight:700;'
+        f'letter-spacing:.14em;text-transform:uppercase;color:#555;margin:0 0 .4rem;">{text}</p>',
+        unsafe_allow_html=True)
+
+def uploader_label(text):
+    st.markdown(
+        f'<p style="font-family:Inter,sans-serif;font-size:.72rem;font-weight:600;'
+        f'letter-spacing:.14em;text-transform:uppercase;color:#555;margin:0 0 .5rem;">{text}</p>',
+        unsafe_allow_html=True)
 
 
-# ══════════════════════════════════════════════════════════════════
-#  HEADER — fully inline, no external class dependencies
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════
+#  HEADER
+# ══════════════════════════════════════════════════════════════════════
 def render_header():
     st.markdown("""
-<div style="text-align:center;padding:3.5rem 2rem 2.5rem;position:relative;">
+<div style="padding:4rem 0 2rem;max-width:780px;">
 
-  <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:2rem;">
-    <div style="height:1px;width:56px;background:linear-gradient(90deg,transparent,#A67C3A);"></div>
-    <span style="font-family:'DM Sans',sans-serif;font-size:.62rem;letter-spacing:.35em;
-          text-transform:uppercase;color:#A67C3A;font-weight:500;">Est. 2025</span>
-    <div style="height:1px;width:56px;background:linear-gradient(90deg,#A67C3A,transparent);"></div>
-  </div>
-
-  <div style="font-family:'Cormorant Garamond',serif;font-size:clamp(3rem,7vw,5.5rem);
-       font-weight:300;line-height:1;color:#18140F;margin:0;">
-    Meeting
-  </div>
-  <div style="font-family:'Cormorant Garamond',serif;font-size:clamp(3rem,7vw,5.5rem);
-       font-weight:600;font-style:italic;line-height:1;color:#4A3728;margin:0 0 1.2rem;">
-    Summarizer
-  </div>
-
-  <div style="display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:1.4rem;">
-    <div style="height:1px;width:40px;background:rgba(24,20,15,.12);"></div>
-    <span style="font-family:'DM Sans',sans-serif;font-size:.72rem;
-          letter-spacing:.2em;text-transform:uppercase;color:#9C8E84;font-weight:400;">
-      Action Items &nbsp;·&nbsp; Unified Summary &nbsp;·&nbsp; All File Types
+  <!-- Status pill — like intenta's "SUGGESTED: KEEP GOING" -->
+  <div style="display:inline-flex;align-items:center;gap:8px;
+       background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);
+       border-radius:20px;padding:.3rem .9rem .3rem .55rem;margin-bottom:2rem;">
+    <span style="width:7px;height:7px;border-radius:50%;background:#22C55E;
+          box-shadow:0 0 8px #22C55E;display:inline-block;flex-shrink:0;"></span>
+    <span style="font-family:Inter,sans-serif;font-size:.72rem;font-weight:600;
+          letter-spacing:.1em;text-transform:uppercase;color:#22C55E;">
+      AI-Powered · Multi-Format
     </span>
-    <div style="height:1px;width:40px;background:rgba(24,20,15,.12);"></div>
+  </div>
+
+  <!-- Main headline -->
+  <h1 style="font-family:Inter,sans-serif;font-size:clamp(2.6rem,5.5vw,4rem);
+       font-weight:900;letter-spacing:-.04em;line-height:1.08;
+       color:#F0F0F0;margin:0 0 1.2rem;">
+    Turn any meeting<br>
+    <span style="color:#22C55E;">into clear action.</span>
+  </h1>
+
+  <!-- Sub -->
+  <p style="font-family:Inter,sans-serif;font-size:1.05rem;font-weight:400;
+     color:#777;line-height:1.75;margin:0 0 2rem;max-width:560px;">
+    Upload audio, PDFs, Word docs, images or plain text.
+    Claude extracts every decision and action item — automatically.
+  </p>
+
+  <!-- Format pills row -->
+  <div style="display:flex;flex-wrap:wrap;gap:.5rem;">
+""" + "".join([
+    f'<span style="font-family:Inter,sans-serif;font-size:.72rem;font-weight:500;'
+    f'color:#888;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);'
+    f'padding:.28rem .8rem;border-radius:6px;">{t}</span>'
+    for t in ["mp3","wav","m4a","pdf","docx","txt","png","jpg"]
+]) + """
   </div>
 
 </div>
 """, unsafe_allow_html=True)
 
 
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════
 #  SIDEBAR
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════
 def render_sidebar():
     with st.sidebar:
         st.markdown("""
-<div style="padding:1.8rem 0 1.2rem;">
-  <p style="font-family:'Cormorant Garamond',serif;font-size:1.5rem;
-     font-weight:600;color:#18140F;margin:0 0 .15rem;">Settings</p>
-  <div style="height:2px;width:28px;background:linear-gradient(90deg,#A67C3A,transparent);border-radius:2px;"></div>
+<div style="padding:1.8rem 0 1.4rem;">
+  <p style="font-family:Inter,sans-serif;font-size:1.15rem;font-weight:800;
+     color:#F0F0F0;margin:0;letter-spacing:-.02em;">Settings</p>
+  <div style="height:2px;width:24px;background:#22C55E;border-radius:2px;
+       margin-top:.5rem;box-shadow:0 0 8px #22C55E;"></div>
 </div>""", unsafe_allow_html=True)
 
-        label("Whisper Model")
-        wm = st.selectbox("Whisper model",["tiny","base","small","medium","large"],
+        sidebar_label("Whisper Model")
+        wm = st.selectbox("Whisper model", ["tiny","base","small","medium","large"],
                           index=1, label_visibility="collapsed")
         st.session_state.whisper_model = wm
 
-        st.markdown("<div style='height:.6rem'></div>", unsafe_allow_html=True)
-        label("Claude Model")
+        st.markdown("<div style='height:.7rem'></div>", unsafe_allow_html=True)
+        sidebar_label("Claude Model")
         cm = st.selectbox("Claude model",
-                          ["claude-sonnet-4-20250514","claude-haiku-4-5-20251001"],
-                          index=0, label_visibility="collapsed")
+             ["claude-sonnet-4-20250514","claude-haiku-4-5-20251001"],
+             index=0, label_visibility="collapsed")
 
         st.markdown("<hr>", unsafe_allow_html=True)
 
         st.markdown("""
-<p style="font-family:'DM Sans',sans-serif;font-size:.65rem;letter-spacing:.18em;
-   text-transform:uppercase;color:#9C8E84;font-weight:500;margin-bottom:.8rem;">
-  Accepted Formats
+<p style="font-family:Inter,sans-serif;font-size:.68rem;font-weight:700;
+   letter-spacing:.14em;text-transform:uppercase;color:#555;margin-bottom:.8rem;">
+   Accepted Formats
 </p>""", unsafe_allow_html=True)
-        for icon, txt in [("🎵","Audio — mp3, wav, m4a, flac"),("📄","PDF"),
-                          ("📝","Word — docx"),("📃","Text — txt"),("🖼️","Images — png, jpg")]:
+        for icon,txt,clr in [
+            ("🎵","Audio — mp3, wav, m4a","#22C55E"),
+            ("📄","PDF","#3B82F6"),
+            ("📝","Word — docx","#A855F7"),
+            ("📃","Text — txt","#F59E0B"),
+            ("🖼️","Images — png, jpg","#EC4899"),
+        ]:
             st.markdown(f"""
-<div style="display:flex;align-items:center;gap:10px;margin-bottom:.45rem;">
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:.5rem;padding:.4rem .6rem;
+     background:rgba(255,255,255,.02);border-radius:8px;border:1px solid rgba(255,255,255,.04);">
   <span style="font-size:.9rem;">{icon}</span>
-  <span style="font-family:'DM Sans',sans-serif;font-size:.8rem;color:#5C5248;">{txt}</span>
+  <span style="font-family:Inter,sans-serif;font-size:.82rem;color:#888;font-weight:400;">{txt}</span>
 </div>""", unsafe_allow_html=True)
 
         st.markdown("<hr>", unsafe_allow_html=True)
         st.markdown("""
-<p style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1rem;
-   color:#9C8E84;text-align:center;margin:0;">Built by Rishi Raj</p>
+<p style="font-family:Inter,sans-serif;font-size:.8rem;color:#444;
+   text-align:center;margin:0;">Built by <span style="color:#22C55E;font-weight:600;">Rishi Raj</span></p>
 """, unsafe_allow_html=True)
     return cm
 
 
-# ══════════════════════════════════════════════════════════════════
-#  FILE CARDS
-# ══════════════════════════════════════════════════════════════════
-_ICONS = {".mp3":"🎵",".wav":"🎵",".m4a":"🎵",".flac":"🎵",".ogg":"🎵",
-          ".pdf":"📄",".docx":"📝",".txt":"📃",".png":"🖼️",".jpg":"🖼️",".jpeg":"🖼️"}
+# ══════════════════════════════════════════════════════════════════════
+#  FILE CARD
+# ══════════════════════════════════════════════════════════════════════
+_ICONS={".mp3":"🎵",".wav":"🎵",".m4a":"🎵",".flac":"🎵",".ogg":"🎵",
+        ".pdf":"📄",".docx":"📝",".txt":"📃",".png":"🖼️",".jpg":"🖼️",".jpeg":"🖼️"}
 
 def render_file_card(r):
-    icon = _ICONS.get(r["ext"],"📎")
+    ico  = _ICONS.get(r["ext"],"📎")
     ext  = r["ext"].upper().lstrip(".")
     tick = "✅" if r["ok"] else "❌"
-    with st.expander(f"{tick}  {icon}  {r['name']}  ·  {ext}", expanded=False):
-        if r["error"]:
-            st.error(r["error"])
+    with st.expander(f"{tick}  {ico}  {r['name']}  ·  {ext}", expanded=False):
+        if r["error"]: st.error(r["error"])
         if r["text"]:
             wc = len(r["text"].split())
-            st.markdown(f'<p style="font-family:\'DM Mono\',monospace;font-size:.72rem;'
-                        f'color:#9C8E84;letter-spacing:.05em;margin-bottom:.5rem;">~{wc:,} words</p>',
-                        unsafe_allow_html=True)
-            st.text_area("t", value=r["text"], height=170, disabled=True,
+            st.markdown(
+                f'<p style="font-family:Inter,sans-serif;font-size:.75rem;color:#555;'
+                f'margin-bottom:.5rem;font-weight:500;">~{wc:,} words extracted</p>',
+                unsafe_allow_html=True)
+            st.text_area("t", value=r["text"], height=180, disabled=True,
                          key=f"ta_{r['name']}", label_visibility="collapsed")
 
 
-# ══════════════════════════════════════════════════════════════════
-#  RESULTS PAGE
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════
+#  RESULTS
+# ══════════════════════════════════════════════════════════════════════
+def divider():
+    st.markdown("""
+<div style="display:flex;align-items:center;gap:16px;margin:3rem 0;">
+  <div style="flex:1;height:1px;background:rgba(255,255,255,.06);"></div>
+</div>""", unsafe_allow_html=True)
+
 def render_results(results, out):
 
-    # ── Metric cards ──
-    thin_rule()
+    # ─── Metric row ───
+    divider()
     c1,c2,c3 = st.columns(3)
-    with c1: st.metric("Sources Processed", sum(1 for r in results if r["ok"]))
+    with c1: st.metric("Sources", sum(1 for r in results if r["ok"]))
     with c2: st.metric("Summary Words", len(out.get("summary","").split()))
-    with c3: st.metric("Action Items", len(out.get("action_items",[])))
+    with c3: st.metric("Action Items",  len(out.get("action_items",[])))
 
-    # ── Summary ──
-    section_title("Meeting Summary", "What was discussed")
+    # ─── Summary ───
+    section_heading("MEETING SUMMARY", "What Was Discussed")
     summary = out.get("summary","No summary generated.")
     st.markdown(f"""
-<div style="background:#FFFFFF;border:1px solid rgba(24,20,15,.08);border-radius:16px;
-     padding:2.4rem 2.8rem 2.4rem 3.2rem;
-     box-shadow:0 1px 0 rgba(255,255,255,.85) inset,
-                0 20px 50px rgba(24,20,15,.1),
-                0 6px 16px rgba(24,20,15,.07),
-                0 2px 4px rgba(24,20,15,.04);
-     position:relative;overflow:hidden;margin-bottom:1rem;">
-  <div style="position:absolute;top:0;left:0;bottom:0;width:4px;
-       background:linear-gradient(180deg,#C9A55A,#A67C3A);border-radius:4px 0 0 4px;"></div>
-  <div style="position:absolute;bottom:-10px;right:20px;
-       font-family:'Cormorant Garamond',serif;font-size:7rem;font-weight:600;
-       color:rgba(200,165,90,.12);line-height:1;user-select:none;pointer-events:none;">"</div>
-  <p style="font-family:'Cormorant Garamond',serif;font-size:1.2rem;line-height:1.9;
-     color:#18140F;margin:0;font-style:italic;font-weight:400;position:relative;z-index:1;">
-    {summary}
-  </p>
-</div>""", unsafe_allow_html=True)
+<div style="
+  background:var(--surface);
+  border:1px solid var(--border2);
+  border-radius:16px;
+  padding:2.4rem 2.6rem;
+  position:relative;overflow:hidden;
+  box-shadow:var(--card-shadow);
+  margin-bottom:1rem;
+">
+  <!-- Green top bar -->
+  <div style="position:absolute;top:0;left:0;right:0;height:2px;
+       background:linear-gradient(90deg,#22C55E,transparent);"></div>
+  <!-- Content -->
+  <div style="display:flex;gap:1.2rem;align-items:flex-start;">
+    <div style="width:36px;height:36px;border-radius:10px;flex-shrink:0;
+         background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);
+         display:flex;align-items:center;justify-content:center;font-size:1.1rem;">🎙️</div>
+    <p style="font-family:Inter,sans-serif;font-size:.97rem;line-height:1.85;
+       color:#C8C8C8;margin:0;font-weight:400;flex:1;">{summary}</p>
+  </div>
+</div>
+""", unsafe_allow_html=True)
 
-    # ── Action Items ──
-    items = out.get("action_items", [])
-    section_title("Next Steps", "Action items &amp; owners")
+    # ─── Action items ───
+    items = out.get("action_items",[])
+    section_heading("NEXT STEPS", "Action Items & Owners")
 
     if items:
-        for i, it in enumerate(items, 1):
-            task  = it.get("task","—")
-            resp  = it.get("responsible","TBD")
-            due   = it.get("due","TBD")
+        for i,it in enumerate(items,1):
+            task = it.get("task","—")
+            resp = it.get("responsible","TBD")
+            due  = it.get("due","TBD")
             st.markdown(f"""
-<div style="display:flex;align-items:flex-start;gap:1.2rem;
-     background:#FFFFFF;border:1px solid rgba(24,20,15,.08);border-radius:12px;
-     padding:1.4rem 1.8rem;margin-bottom:.7rem;
-     box-shadow:0 1px 0 rgba(255,255,255,.85) inset,
-                0 12px 32px rgba(24,20,15,.08),
-                0 4px 10px rgba(24,20,15,.05),
-                0 1px 3px rgba(24,20,15,.04);
-     transition:transform .2s ease,box-shadow .2s ease;">
-  <div style="min-width:2.3rem;height:2.3rem;
-       background:linear-gradient(145deg,#2E2218,#18140F);
-       border-radius:50%;display:flex;align-items:center;justify-content:center;
-       box-shadow:0 4px 12px rgba(24,20,15,.28),0 1px 3px rgba(24,20,15,.15);
-       flex-shrink:0;margin-top:.05rem;">
-    <span style="font-family:'Cormorant Garamond',serif;font-size:1rem;
-          font-weight:600;color:#EDD9A3;">{i}</span>
+<div style="
+  display:flex;align-items:flex-start;gap:1.2rem;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:1.4rem 1.6rem;
+  margin-bottom:.65rem;
+  box-shadow:var(--card-shadow);
+  transition:border-color .2s,box-shadow .2s;
+  position:relative;overflow:hidden;
+" onmouseover="this.style.borderColor='rgba(255,255,255,0.14)';this.style.transform='translateY(-2px)'"
+  onmouseout="this.style.borderColor='rgba(255,255,255,0.07)';this.style.transform='translateY(0)'">
+  <!-- Left accent -->
+  <div style="position:absolute;top:0;left:0;bottom:0;width:3px;
+       background:linear-gradient(180deg,#22C55E,#16a34a);border-radius:3px 0 0 3px;"></div>
+  <!-- Number badge -->
+  <div style="min-width:2rem;height:2rem;border-radius:8px;flex-shrink:0;
+       background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);
+       display:flex;align-items:center;justify-content:center;margin-left:.2rem;">
+    <span style="font-family:Inter,sans-serif;font-size:.8rem;
+          font-weight:800;color:#22C55E;">{i}</span>
   </div>
+  <!-- Content -->
   <div style="flex:1;min-width:0;">
-    <p style="font-family:'Cormorant Garamond',serif;font-size:1.12rem;font-weight:500;
-       color:#18140F;margin:0 0 .65rem;line-height:1.45;">{task}</p>
-    <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
-      <span style="font-family:'DM Sans',sans-serif;font-size:.72rem;font-weight:500;
-            letter-spacing:.04em;background:#F5EDD8;color:#7A5C20;
-            padding:.22rem .8rem;border-radius:20px;border:1px solid rgba(166,124,58,.25);">
-        👤 {resp}
-      </span>
-      <span style="font-family:'DM Sans',sans-serif;font-size:.72rem;font-weight:500;
-            letter-spacing:.04em;background:#EEEEFF;color:#3636A0;
-            padding:.22rem .8rem;border-radius:20px;border:1px solid rgba(54,54,160,.18);">
-        📅 {due}
-      </span>
+    <p style="font-family:Inter,sans-serif;font-size:.95rem;font-weight:600;
+       color:#F0F0F0;margin:0 0 .65rem;line-height:1.45;">{task}</p>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
+      {tag("👤 " + resp, "green")}
+      {tag("📅 " + due, "purple")}
     </div>
   </div>
-</div>""", unsafe_allow_html=True)
+</div>
+""", unsafe_allow_html=True)
     else:
-        st.info("No action items identified in the uploaded content.")
+        st.info("No action items identified.")
 
-    # ── Source files ──
-    thin_rule()
-    section_title("Source Files", "Extracted content")
+    # ─── Source files ───
+    divider()
+    section_heading("SOURCE FILES", "Extracted Content")
     for r in results:
         render_file_card(r)
 
-    # ── Download ──
     st.markdown("<div style='height:1.5rem;'></div>", unsafe_allow_html=True)
     st.download_button(
         label="↓   Download Summary as Markdown",
@@ -526,46 +644,59 @@ def render_results(results, out):
     )
 
 
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════
 #  EMPTY STATE
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════
 def render_empty_state():
     st.markdown("""
-<div style="text-align:center;padding:4rem 2rem 4.5rem;
-     background:#FFFFFF;border:1px solid rgba(24,20,15,.07);
-     border-radius:18px;margin-top:.5rem;
-     box-shadow:0 1px 0 rgba(255,255,255,.85) inset,
-                0 20px 50px rgba(24,20,15,.09),
-                0 6px 16px rgba(24,20,15,.06),
-                0 2px 4px rgba(24,20,15,.04);">
-  <div style="font-size:3rem;margin-bottom:1.4rem;opacity:.5;letter-spacing:.1em;">🎬</div>
-  <p style="font-family:'Cormorant Garamond',serif;font-size:1.7rem;font-weight:400;
-     font-style:italic;color:#18140F;margin:0 0 .75rem;">Ready for your meeting files</p>
-  <p style="font-family:'DM Sans',sans-serif;font-size:.84rem;color:#9C8E84;
-     max-width:360px;margin:0 auto;line-height:1.75;">
-    Upload any combination of audio, PDF, Word, images, or text files.<br>
-    Claude synthesises everything into one clean summary.
+<div style="
+  background:var(--surface);
+  border:1px solid var(--border2);
+  border-radius:20px;
+  padding:5rem 2rem;
+  text-align:center;
+  margin-top:1rem;
+  box-shadow:var(--card-shadow);
+  position:relative;overflow:hidden;
+">
+  <!-- Glow backdrop -->
+  <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+       width:320px;height:320px;border-radius:50%;
+       background:radial-gradient(circle,rgba(34,197,94,.06) 0%,transparent 70%);
+       pointer-events:none;"></div>
+
+  <div style="font-size:2.8rem;margin-bottom:1.4rem;">🎙️</div>
+  <p style="font-family:Inter,sans-serif;font-size:1.5rem;font-weight:800;
+     color:#F0F0F0;margin:0 0 .75rem;letter-spacing:-.03em;">
+    Drop your meeting files
   </p>
-  <div style="display:flex;justify-content:center;gap:.6rem;flex-wrap:wrap;margin-top:2rem;">
-""" + "".join(
-    f'<span style="font-family:\'DM Sans\',sans-serif;font-size:.7rem;letter-spacing:.1em;'
-    f'text-transform:uppercase;color:#9C8E84;background:#F5F2EA;'
-    f'padding:.35rem 1rem;border-radius:20px;border:1px solid rgba(24,20,15,.08);">{t}</span>'
+  <p style="font-family:Inter,sans-serif;font-size:.95rem;color:#666;
+     max-width:380px;margin:0 auto;line-height:1.8;font-weight:400;">
+    Audio, PDFs, Word docs, screenshots — upload any combination
+    and get a summary with action items in seconds.
+  </p>
+  <div style="display:flex;justify-content:center;gap:.5rem;flex-wrap:wrap;margin-top:2rem;">
+""" + "".join([
+    f'<span style="font-family:Inter,sans-serif;font-size:.7rem;font-weight:600;'
+    f'letter-spacing:.08em;text-transform:uppercase;color:#555;'
+    f'background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);'
+    f'padding:.3rem .9rem;border-radius:6px;">{t}</span>'
     for t in ["Audio","PDF","Word","Images","Text"]
-) + """
+]) + """
   </div>
-</div>""", unsafe_allow_html=True)
+</div>
+""", unsafe_allow_html=True)
 
 
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════
 #  MAIN
-# ══════════════════════════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════════════
 def main():
     init_state()
     render_header()
     claude_model = render_sidebar()
 
-    label("Upload Meeting Files")
+    uploader_label("Upload Meeting Files")
     uploaded = st.file_uploader(
         "Drop files here", accept_multiple_files=True,
         type=["mp3","wav","m4a","flac","ogg","pdf","docx","txt","png","jpg","jpeg"],
@@ -574,49 +705,51 @@ def main():
 
     if uploaded:
         st.markdown(
-            f'<p style="font-family:\'DM Mono\',monospace;font-size:.75rem;color:#9C8E84;'
-            f'margin:.5rem 0 1.2rem;letter-spacing:.04em;">'
+            f'<p style="font-family:Inter,sans-serif;font-size:.78rem;color:#555;'
+            f'margin:.5rem 0 1.2rem;font-weight:500;">'
             f'{len(uploaded)} file{"s" if len(uploaded)>1 else ""} selected</p>',
-            unsafe_allow_html=True
-        )
-        if st.button("  Process & Summarize  ", type="primary"):
-            st.session_state.results = []
+            unsafe_allow_html=True)
+
+        if st.button("  Analyze Meeting  ", type="primary"):
+            st.session_state.results      = []
             st.session_state.claude_output = None
             has_audio = any(Path(f.name).suffix.lower() in AUDIO_EXTS for f in uploaded)
 
-            with st.status("Extracting text from files…" if not has_audio else "Transcribing audio & extracting text…",
-                           expanded=True) as status:
-                results = []
+            with st.status(
+                "Transcribing & extracting…" if has_audio else "Extracting text…",
+                expanded=True) as status:
+
+                results=[]
                 for uf in uploaded:
                     st.write(f"Processing `{uf.name}`…")
-                    r = process_file(uf); results.append(r)
-                    st.write(f"  {'✅' if r['ok'] else '⚠️'}  {'~'+str(len(r['text'].split()))+' words' if r['ok'] else r['error']}")
+                    r=process_file(uf); results.append(r)
+                    if r["ok"]: st.write(f"  ✅  ~{len(r['text'].split()):,} words")
+                    else:       st.write(f"  ⚠️  {r['error']}")
 
-                st.session_state.results = results
-                good = [r for r in results if r["ok"]]
+                st.session_state.results=results
+                good=[r for r in results if r["ok"]]
                 if not good:
-                    status.update(label="No text extracted", state="error")
+                    status.update(label="No text extracted",state="error")
                     st.error("Could not extract text from any file."); return
 
-                combined = ("\n\n" + "─"*60 + "\n\n").join(
+                combined=("\n\n"+"─"*60+"\n\n").join(
                     f"[Source: {r['name']}]\n{r['text']}" for r in good)
-                if len(combined.split()) > 6000:
-                    st.warning("Combined text exceeds 6 000 words — results may be truncated.")
+                if len(combined.split())>6000:
+                    st.warning("⚠️ Text exceeds 6 000 words — consider fewer files.")
 
-                st.write("Sending to Claude…")
-                out, err = call_claude(combined, claude_model)
+                st.write("🤖 Analyzing with Claude…")
+                out,err=call_claude(combined, claude_model)
                 if err:
-                    status.update(label="Claude error", state="error")
+                    status.update(label="Claude error",state="error")
                     st.error(err); return
 
-                st.session_state.claude_output = out
-                status.update(label="Analysis complete", state="complete", expanded=False)
+                st.session_state.claude_output=out
+                status.update(label="Done",state="complete",expanded=False)
 
     if st.session_state.claude_output and st.session_state.results:
         render_results(st.session_state.results, st.session_state.claude_output)
     elif not uploaded and not st.session_state.results:
         render_empty_state()
 
-
-if __name__ == "__main__":
+if __name__=="__main__":
     main()
