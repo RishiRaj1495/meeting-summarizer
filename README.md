@@ -2,11 +2,17 @@
 
 > Upload audio recordings, PDFs, Word documents, images, and plain text files — get a unified meeting summary and extracted action items powered by Claude AI.
 
-Built by **Rishi Raj** (BTech project)
+Built by **Rishi Raj** 
 
 ---
+## ScreenShot
+<img width="1522" height="486" alt="image" src="https://github.com/user-attachments/assets/831ce2c7-de98-4013-b513-2ed342af6617" />
 
-## ✨ Features
+
+<img width="1522" height="486" alt="image" src="https://github.com/user-attachments/assets/817284f6-35fb-46a7-bd3f-7aa53ad98bd9" />
+
+---
+## Features
 
 | Feature | Detail |
 |---|---|
@@ -97,38 +103,6 @@ docker run -p 8501:8501 -e ANTHROPIC_API_KEY=sk-ant-... meeting-summarizer
 ```
 
 Open **http://localhost:8501**
-
----
-
-## ☁️ Cloud Deployment Options
-
-### Option A — Render.com (Free tier available)
-
-1. Push this repo to GitHub
-2. Go to https://render.com → **New Web Service**
-3. Connect your repo, select **Docker** as runtime
-4. Add environment variable: `ANTHROPIC_API_KEY=sk-ant-...`
-5. Deploy → Render builds and runs the Dockerfile automatically
-
-> ✅ Full support: audio (ffmpeg), OCR (Tesseract), all file types
-
-### Option B — Hugging Face Spaces
-
-1. Create a new Space, choose **Docker** SDK
-2. Upload all files (app.py, requirements.txt, Dockerfile)
-3. Add secret `ANTHROPIC_API_KEY` in Space Settings → Secrets
-4. HF Spaces builds and serves the Docker container
-
-> ✅ Free tier, persistent URL, full dependency support
-
-### Option C — Streamlit Cloud ⚠️
-
-> **Not recommended** — Streamlit Cloud does NOT support custom system packages (ffmpeg, Tesseract).  
-> Audio and image OCR will fail. Only PDF/DOCX/TXT will work.
-
-If you still want Streamlit Cloud:
-- Replace pytesseract with Claude's vision API (pass image directly)
-- Remove audio support (or use an external transcription API)
 
 ---
 
