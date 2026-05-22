@@ -8,11 +8,9 @@ Built by **Rishi Raj**
 ## Screenshot
 <img width="1920" height="1080" alt="Screenshot 2026-05-22 113756" src="https://github.com/user-attachments/assets/dbfe632a-eafb-47ff-a34d-d7092a6eda00" />
 
-<img width="1918" height="1078" alt="Screenshot 2026-05-22 113908" src="https://github.com/user-attachments/assets/c0f77a42-8fa9-47f3-a980-8db153eec407" />
+<img width="1918" height="1078" alt="Screenshot 2026-05-22 114411" src="https://github.com/user-attachments/assets/83d6b778-a9da-47f4-8e22-a2c649d7423e" />
 
 <img width="1920" height="1079" alt="Screenshot 2026-05-22 113916" src="https://github.com/user-attachments/assets/c2b798f3-5e16-42a5-97ae-501635a5ad4a" />
-
-<img width="1918" height="1078" alt="Screenshot 2026-05-22 114411" src="https://github.com/user-attachments/assets/83d6b778-a9da-47f4-8e22-a2c649d7423e" />
 
 
 ---
