@@ -1,8 +1,6 @@
 # 🎙️ Meeting Summarizer & Action Item Extractor
 
-> Upload audio recordings, PDFs, Word documents, images, and plain text files — get a unified meeting summary and extracted action items powered by Claude AI.
-
-Built by **Rishi Raj** 
+> Upload audio recordings, PDFs, Word documents, images, and plain text files — get a unified meeting summary and extracted action items.
 
 ---
 ## Screenshot
